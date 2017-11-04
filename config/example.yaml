@@ -1,0 +1,18 @@
+redis:
+    host: "172.17.0.3"
+    port: 6379
+    db: 0
+
+qps_players:
+    - test0:
+        collect_target: "test0:bash:stats"
+        collect_interval: 60
+        rotate_value: 100000000
+        graph_path: "test0.bash.stats"
+
+    - test1:
+        collect_target: "test1:bash:stats"
+        collect_interval: 10
+        rotate_value: 100000000
+        graph_path: "test1.bash.stats"
+
