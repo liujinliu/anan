@@ -6,7 +6,7 @@ import pickle
 import struct
 import argparse
 import redis
-from caculator import QpsPlayer
+from caculator import QpsPlayer, AggregationPlayer
 from config_parse import get_config
 
 
@@ -30,11 +30,8 @@ def feeding(s, players):
     while True:
         allmetrics = []
         for p in players:
-            path = p.get_graph_path()
-            timestamp, value = p.get_metric()
-            if value is None:
-                continue
-            allmetrics.append((path, (timestamp, value)))
+            tmp_metric = p.get_metrics()
+            allmetrics.extend(tmp_metric)
         if allmetrics:
             payload = pickle.dumps(allmetrics, protocol=2)
             header = struct.pack("!L", len(payload))
@@ -54,6 +51,11 @@ def players_get():
         players.append(QpsPlayer(pool, p['collect_target'],
                                  p['collect_interval'],
                                  p['rotate_value'], p['graph_path']))
+    for p in CONFIG['aggregation_players']:
+        players.append(AggregationPlayer(pool, p['collect_target'],
+                                         p['collect_interval'],
+                                         p['aggregation_length'],
+                                         p['aggregation_types']))
     return players
 
 

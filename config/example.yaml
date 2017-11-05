@@ -16,3 +16,19 @@ qps_players:
         rotate_value: 100000000
         graph_path: "test1.bash.stats"
 
+aggregation_players:
+    - test0:
+        collect_target: "test2:bash:stats"
+        collect_interval: 2
+        aggregation_length: 30
+        aggregation_types: max,avg
+        graph_path: "test2.bash.stats"
+
+    - test1:
+        collect_target: "test3:bash:stats"
+        collect_interval: 1
+        aggregation_length: 60
+        aggregation_types: avg 
+        graph_path: "test3.bash.stats"
+
+

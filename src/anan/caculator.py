@@ -16,22 +16,35 @@ def return_when_crash(default_ret):
     return never_crash
 
 
-class QpsPlayer(object):
+def average(values):
+    return int(sum(values) / len(values))
 
-    def __init__(self, redis_pool, collect_target,
-                 collect_interval, rotate_value,
-                 graph_path):
-        self.collect_target = collect_target
-        self.collect_interval = collect_interval
-        self.last_collect_value = None
-        self.last_collect_time = None
+
+class BasePlayer(object):
+
+    def __init__(self, redis_pool, graph_path):
         self.redis_pool = redis_pool
-        self.rotate_value = rotate_value
-        self.graph_path = self.graph_path
+        self.graph_path = graph_path
+        self.last_collect_time = None
 
     @property
     def _conn(self):
         return redis.Redis(connection_pool=self.REDIS_POOL)
+
+    def get_graph_path(self):
+        return self.graph_path
+
+
+class QpsPlayer(BasePlayer):
+
+    def __init__(self, redis_pool,
+                 graph_path, collect_target,
+                 collect_interval, rotate_value):
+        super(QpsPlayer, self).__init__(redis_pool, graph_path)
+        self.collect_target = collect_target
+        self.collect_interval = collect_interval
+        self.last_collect_value = None
+        self.rotate_value = rotate_value
 
     def _get_value_init(self):
         r = self._conn
@@ -60,7 +73,7 @@ class QpsPlayer(object):
         if self.last_collect_time is None:
             self.last_collect_time = int(time.time())
             return self._get_value_init()
-        elif self.last_collect_time + self.collect_interval > int(time.time()):
+        elif self.last_collect_time + self.collect_interval >= int(time.time()):
             self.last_collect_time = int(time.time())
             if self.last_collect_value >= self.rotate_value:
                 return self._get_value_and_rotate()
@@ -69,10 +82,55 @@ class QpsPlayer(object):
         else:
             return None
 
-    def get_metric(self):
+    def get_metrics(self):
+        ret = []
         value = self.get_value()
         timestamp = self.last_collect_time
-        return timestamp, value
+        if value is not None:
+            ret.append((self.get_graph_path(), (timestamp, value)))
+        return ret
 
-    def get_graph_path(self):
-        return self.graph_path
+
+class AggregationPlayer(BasePlayer):
+
+    AGGREGATION_METHOD = {'max': max, 'min': min,
+                          'avg': average}
+
+    def __init__(self, redis_pool, graph_path,
+                 collect_target, collect_interval,
+                 aggregation_length, aggregation_types):
+        super(AggregationPlayer, self).__init__(redis_pool, graph_path)
+        self.collect_target = collect_target
+        self.collect_interval = collect_interval
+        self.aggregation_length = aggregation_length
+        self.values = []
+        self.methods = filter(lambda x: x in self.AGGREGATION_METHOD,
+                              aggregation_types.strip().split(','))
+
+    @return_when_crash(None)
+    def get_values(self):
+        ret = []
+        if (self.last_collect_time is None) or\
+                (self.last_collect_time +
+                 self.collect_interval >= int(time.time())):
+            self.last_collect_time = int(time.time())
+            r = self._conn
+            current_value = int(r.get())
+            self.values.append(current_value)
+        if len(self.values) >= self.aggregation_length:
+            ret = self.values
+            self.values = []
+            return ret
+        return ret
+
+    def get_metrics(self):
+        base_path = self.get_graph_path()
+        metrics = []
+        values = self.get_values()
+        if values:
+            for method in self.methods:
+                path = '%s.%s' % (base_path, method)
+                timestamp = self.last_collect_time
+                value = self.methods[method](values)
+                metrics.append((path, (timestamp, value)))
+        return metrics
