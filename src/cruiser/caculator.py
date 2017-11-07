@@ -8,9 +8,9 @@ def return_when_crash(default_ret):
     def never_crash(func):
         def wrapper(self):
             try:
-                return func()
+                return func(self)
             except Exception as e:
-                logging.debug(e, exc_info=True)
+                logging.info(e, exc_info=True)
                 return default_ret
         return wrapper
     return never_crash
@@ -25,14 +25,21 @@ class BasePlayer(object):
     def __init__(self, redis_pool, graph_path):
         self.redis_pool = redis_pool
         self.graph_path = graph_path
-        self.last_collect_time = None
+        self.last_collect_time = int(time.time())
 
     @property
     def _conn(self):
-        return redis.Redis(connection_pool=self.REDIS_POOL)
+        return redis.Redis(connection_pool=self.redis_pool)
 
     def get_graph_path(self):
         return self.graph_path
+
+    def _get_int_if_exist(self, key):
+        r = self._conn
+        val = r.get(key)
+        if val is not None:
+            return int(val)
+        return val
 
 
 class QpsPlayer(BasePlayer):
@@ -47,8 +54,7 @@ class QpsPlayer(BasePlayer):
         self.rotate_value = rotate_value
 
     def _get_value_init(self):
-        r = self._conn
-        current_value = int(r.get())
+        current_value = self._get_int_if_exist(self.collect_target)
         self.last_collect_value = current_value
         return None
 
@@ -62,19 +68,18 @@ class QpsPlayer(BasePlayer):
         return ret
 
     def _get_value(self):
-        r = self._conn
-        current_value = int(r.get())
-        ret = current_value - self.last_collect_value
-        self.last_collect_value = current_value
-        return ret
+        current_value = self._get_int_if_exist(self.collect_target)
+        if current_value is not None:
+            ret = current_value - self.last_collect_value
+            self.last_collect_value = current_value
+            return ret
+        else:
+            return None
 
-    @return_when_crash(0)
     def get_value(self):
-        if self.last_collect_time is None:
-            self.last_collect_time = int(time.time())
+        if self.last_collect_value is None:
             return self._get_value_init()
-        elif self.last_collect_time + self.collect_interval >= int(time.time()):
-            self.last_collect_time = int(time.time())
+        elif self.last_collect_time + self.collect_interval <= int(time.time()):
             if self.last_collect_value >= self.rotate_value:
                 return self._get_value_and_rotate()
             else:
@@ -85,9 +90,9 @@ class QpsPlayer(BasePlayer):
     def get_metrics(self):
         ret = []
         value = self.get_value()
-        timestamp = self.last_collect_time
         if value is not None:
-            ret.append((self.get_graph_path(), (timestamp, value)))
+            self.last_collect_time = int(time.time())
+            ret.append((self.get_graph_path(), (self.last_collect_time, value)))
         return ret
 
 
@@ -104,19 +109,16 @@ class AggregationPlayer(BasePlayer):
         self.collect_interval = collect_interval
         self.aggregation_length = aggregation_length
         self.values = []
-        self.methods = filter(lambda x: x in self.AGGREGATION_METHOD,
-                              aggregation_types.strip().split(','))
+        self.target_methods = filter(lambda x: x in self.AGGREGATION_METHOD,
+                                     aggregation_types.strip().split(','))
 
-    @return_when_crash(None)
     def get_values(self):
         ret = []
-        if (self.last_collect_time is None) or\
-                (self.last_collect_time +
-                 self.collect_interval >= int(time.time())):
+        if (self.last_collect_time + self.collect_interval <= int(time.time())):
             self.last_collect_time = int(time.time())
-            r = self._conn
-            current_value = int(r.get())
-            self.values.append(current_value)
+            current_value = self._get_int_if_exist(self.collect_target)
+            if current_value is not None:
+                self.values.append(current_value)
         if len(self.values) >= self.aggregation_length:
             ret = self.values
             self.values = []
@@ -128,9 +130,9 @@ class AggregationPlayer(BasePlayer):
         metrics = []
         values = self.get_values()
         if values:
-            for method in self.methods:
+            for method in self.target_methods:
                 path = '%s.%s' % (base_path, method)
                 timestamp = self.last_collect_time
-                value = self.methods[method](values)
+                value = self.AGGREGATION_METHOD[method](values)
                 metrics.append((path, (timestamp, value)))
         return metrics

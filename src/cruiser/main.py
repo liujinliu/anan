@@ -37,7 +37,6 @@ def feeding(s, players):
             header = struct.pack("!L", len(payload))
             message = '%s%s' % (header, payload)
             s.sendall(message)
-            print(message)
         time.sleep(1)
 
 
@@ -49,11 +48,12 @@ def players_get():
                                 db=redis_db)
     players = []
     for p in CONFIG['qps_players']:
-        players.append(QpsPlayer(pool, p['collect_target'],
+        players.append(QpsPlayer(pool, p['graph_path'], p['collect_target'],
                                  p['collect_interval'],
-                                 p['rotate_value'], p['graph_path']))
+                                 p['rotate_value']))
     for p in CONFIG['aggregation_players']:
-        players.append(AggregationPlayer(pool, p['collect_target'],
+        players.append(AggregationPlayer(pool, p['graph_path'],
+                                         p['collect_target'],
                                          p['collect_interval'],
                                          p['aggregation_length'],
                                          p['aggregation_types']))
@@ -61,10 +61,10 @@ def players_get():
 
 
 def cruiser_run():
-    pass
-
-
-if __name__ == "__main__":
     s = socket_create()
     players = players_get()
     feeding(s, players)
+
+
+if __name__ == "__main__":
+    cruiser_run()

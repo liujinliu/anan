@@ -9,9 +9,14 @@ def _setup():
         version='0.0.1',
         description='data collection from redis, then feeding to graphite',
         url='https://github.com/liujinliu/anan',
-        install_requires=[],
+        install_requires=["redis", "PyYAML"],
         packages=find_packages('src'),
         package_dir={'': 'src'},
+        entry_points={
+            'console_scripts': [
+                'cruiser-run=cruiser.main:cruiser_run'
+            ]
+        },
         classifiers=[
             'Development Status :: 4 - Beta Development Status',
             'Environment :: Console',
