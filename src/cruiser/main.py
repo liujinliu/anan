@@ -47,16 +47,18 @@ def players_get():
     pool = redis.ConnectionPool(host=redis_host, port=redis_port,
                                 db=redis_db)
     players = []
-    for p in CONFIG['qps_players']:
-        players.append(QpsPlayer(pool, p['graph_path'], p['collect_target'],
-                                 p['collect_interval'],
-                                 p['rotate_value']))
-    for p in CONFIG['aggregation_players']:
-        players.append(AggregationPlayer(pool, p['graph_path'],
-                                         p['collect_target'],
-                                         p['collect_interval'],
-                                         p['aggregation_length'],
-                                         p['aggregation_types']))
+    if CONFIG.get('qps_players', []):
+        for p in CONFIG['qps_players']:
+            players.append(QpsPlayer(pool, p['graph_path'], p['collect_target'],
+                                     p['collect_interval'],
+                                     p['rotate_value']))
+    if CONFIG.get('aggregation_players', []):
+        for p in CONFIG['aggregation_players']:
+            players.append(AggregationPlayer(pool, p['graph_path'],
+                                             p['collect_target'],
+                                             p['collect_interval'],
+                                             p['aggregation_length'],
+                                             p['aggregation_types']))
     return players
 
 
