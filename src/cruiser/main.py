@@ -20,7 +20,7 @@ CONFIG = get_config(ARGS.config_file)
 
 def socket_create():
     host = CONFIG['graphite']['host']
-    port = 2004
+    port = CONFIG['graphite'].get('pickle', 2004)
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((host, port))
     return s
@@ -37,6 +37,7 @@ def feeding(s, players):
             header = struct.pack("!L", len(payload))
             message = '%s%s' % (header, payload)
             s.sendall(message)
+            print(message)
         time.sleep(1)
 
 
@@ -57,6 +58,10 @@ def players_get():
                                          p['aggregation_length'],
                                          p['aggregation_types']))
     return players
+
+
+def cruiser_run():
+    pass
 
 
 if __name__ == "__main__":

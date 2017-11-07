@@ -3,6 +3,9 @@ redis:
     port: 6379
     db: 0
 
+graphite:
+    host: "192.168.1.139"
+
 qps_players:
     - test0:
         collect_target: "test0:bash:stats"

@@ -12,7 +12,7 @@ install: build
 	pip install dist/*.whl -U
 
 uninstall:
-	pip uninstall anan -y
+	pip uninstall cruiser -y
 
 deploy:
 	pip install *.whl -U
