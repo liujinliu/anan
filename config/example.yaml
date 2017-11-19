@@ -1,11 +1,23 @@
+# you write metric to redis, and this section is the
+# redis connection config
 redis:
     host: "172.17.0.3"
     port: 6379
     db: 0
 
+# the graphite connection config
+# cruiser send metrics to graphite via pickle
 graphite:
     host: "192.168.1.139"
+    # pickle: 2004
 
+# this section is the config of qpm metrics.
+# you incr the {collect_target} by time.
+# cruiser detect the increment of every
+# {collect_interval} seconds and send the metric
+# to graphite use the name {graph_path}.
+# when the value of {collect_target} is bigger than
+# {collect_interval}, cruiser will set it to 0
 qps_players:
     - 
         collect_target: "test0:bash:stats"
@@ -19,6 +31,12 @@ qps_players:
         rotate_value: 100000000
         graph_path: "test1.bash.stats"
 
+# this section is the config of time-cost metrics.
+# you set the {collect_target} by time.
+# cruiser collect the value every {collect_interval}.
+# when the number of collections is achieve {aggregation_length}
+# cruiser will caculate the max/min/avg of these values
+# and send the metric to graphite use the name {graph_path}.{max/min/avg}
 aggregation_players:
     -
         collect_target: "test2:bash:stats"
