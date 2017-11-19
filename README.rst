@@ -7,6 +7,7 @@ INSTALL
 install from source:
 
 ::
+
     git clone https://github.com/liujinliu/anan.git
     cd anan
     make install
@@ -15,6 +16,7 @@ install from source:
 USEAGE
 ~~~~~~~~~~~~~
 ::
+
 	$cruiser-run --config_file filename
 
 CONFIGURATION
