@@ -4,6 +4,12 @@ You wrote metric to redis, I collect them and forward to grahite
 
 INSTALL
 ~~~~~~~~~~~~~~~
+install from pypi:
+
+::
+
+    pip install cruiser
+
 install from source:
 
 ::

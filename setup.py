@@ -18,7 +18,6 @@ def _setup():
             ]
         },
         classifiers=[
-            'Development Status :: 4 - Beta Development Status',
             'Environment :: Console',
             'Topic :: Utilities',
         ],
